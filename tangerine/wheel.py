@@ -377,7 +377,11 @@ class TangerineWheel(QWidget):
         """Abort a farewell in flight so the wheel stays for this gesture."""
         self._depart_token += 1
         self._depart = 0.0
-        self._retire_animation("_depart_anim")
+        # Keep the stopped handle available until the next dismissal:
+        # callers and existing tests inspect its State.Stopped contract.
+        # _animate_depart retires this handle before creating a replacement.
+        if self._depart_anim is not None:
+            self._depart_anim.stop()
         self.update()
 
     def _close(self) -> None:
