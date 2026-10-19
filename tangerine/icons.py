@@ -531,6 +531,11 @@ GLYPH_KEYS = tuple(sorted(_GLYPHS))
 
 #: Tool id -> glyph name (mirrors ``catalog``'s tool ids).
 _TOOL_GLYPHS = {
+    "file.copy": "document",
+    "file.move": "join",
+    "file.path": "text",
+    "file.terminal": "text",
+    "file.float": "collage",
     "img.compress": "compress",
     "aud.compress": "compress",
     "vid.compress": "compress",
