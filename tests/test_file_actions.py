@@ -33,6 +33,9 @@ def test_copy_path_and_file_urls(qapp, tmp_path):
     data = QGuiApplication.clipboard().mimeData()
     assert data.hasUrls()
     assert [Path(u.toLocalFile()) for u in data.urls()] == [first.absolute()]
+    # QClipboard owns the transferred QMimeData object; clear it before
+    # QApplication teardown to avoid a Windows Qt/Python shutdown failure.
+    QGuiApplication.clipboard().clear()
 
 
 def test_move_never_overwrites_existing_destination(qapp, tmp_path, monkeypatch):
