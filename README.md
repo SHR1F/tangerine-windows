@@ -28,6 +28,13 @@ collage, metadata, QR reading and more.
 > the name is used only to describe the interaction it was inspired by, and the
 > icon is an original re-creation of a citrus-wheel concept.
 
+## Drag gesture parity
+
+Once the radial wheel appears during a drag, **you may release the modifier
+key**: it remains visible while you keep dragging, until you drop or cancel.
+Press another wheel modifier mid-drag to switch between Convert, Tools, and
+Windows File Actions. This matches the Mac app's key-release gesture.
+
 ## What it is
 
 Tangerine for Windows is a Python 3 + PySide6 tray application. It watches for
@@ -375,7 +382,7 @@ cases and **38/38** document routes.
 - **Subtitle conversion is text-level.** Cue text and timings are preserved,
   but converting to SRT drops WebVTT cue settings, and TXT keeps only the
   transcript (no timings).
-- **Files only.** Folders cannot be dropped onto the wheel.
+- **Conversion and editing require files.** Folders and mixed selections work with the Windows file-actions wheel (Ctrl+drag), but folders cannot be converted.
 
 ## Repository layout
 
