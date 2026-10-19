@@ -561,15 +561,27 @@ class TangerineWheel(QWidget):
 
     # -- animations -----------------------------------------------------
 
+    def _retire_animation(self, attribute: str) -> None:
+        """Stop and release a previous Qt animation before starting a new one.
+
+        An animation remains live even when its Python attribute is replaced.
+        Without explicit cleanup rapid pointer movement leaves animations
+        competing to write the same hover/capsule value and retaining QObjects.
+        """
+        animation = getattr(self, attribute)
+        if animation is not None:
+            animation.stop()
+            animation.deleteLater()
+            setattr(self, attribute, None)
+
     def _stop_animations(self) -> None:
-        for animation in (
-            self._appear_anim,
-            self._hover_anim,
-            self._capsule_anim,
-            self._depart_anim,
+        for attribute in (
+            "_appear_anim",
+            "_hover_anim",
+            "_capsule_anim",
+            "_depart_anim",
         ):
-            if animation is not None:
-                animation.stop()
+            self._retire_animation(attribute)
 
     def _on_appear_tick(self, value) -> None:
         self._appear_ms = float(value)
@@ -579,6 +591,7 @@ class TangerineWheel(QWidget):
         count = len(self._items)
         start = {index: self._hover_value(index) for index in range(count)}
         target = {index: (1.0 if index == self._hover else 0.0) for index in range(count)}
+        self._retire_animation("_hover_anim")
         animation = QVariantAnimation(self)
         animation.setStartValue(0.0)
         animation.setEndValue(1.0)
@@ -599,6 +612,7 @@ class TangerineWheel(QWidget):
         animation.start()
 
     def _animate_capsule(self, target: float) -> None:
+        self._retire_animation("_capsule_anim")
         animation = QVariantAnimation(self)
         animation.setStartValue(float(self._capsule_t))
         animation.setEndValue(float(target))
@@ -614,6 +628,7 @@ class TangerineWheel(QWidget):
         self.update()
 
     def _animate_depart(self, finished) -> None:
+        self._retire_animation("_depart_anim")
         animation = QVariantAnimation(self)
         animation.setStartValue(float(self._depart))
         animation.setEndValue(1.0)
