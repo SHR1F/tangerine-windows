@@ -688,6 +688,11 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "tray.quit_running": "Hay conversiones en curso. ¿Salir de todos modos?",
         # -- actions ------------------------------------------------------
+        "file.copy": "Copiar",
+        "file.move": "Mover",
+        "file.path": "Copiar ruta",
+        "file.terminal": "Terminal",
+        "file.float": "Flotar",
         "action.file_to": "{name} → {target}",
         "action.converting_to": "Convirtiendo a {target}",
         "action.converting_many": "Convirtiendo {n} archivos a {target}",
