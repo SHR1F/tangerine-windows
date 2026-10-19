@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feat/windows-finish-pass
+      - feat/windows-file-actions
     tags:
       - "v*"
   workflow_dispatch:
