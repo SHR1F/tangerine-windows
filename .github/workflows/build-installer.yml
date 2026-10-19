@@ -54,6 +54,153 @@ jobs:
           New-Item -ItemType Directory -Path tools -Force | Out-Null
           Copy-Item -LiteralPath $ffmpeg.FullName -Destination 'tools/ffmpeg.exe' -Force
           Copy-Item -LiteralPath $ffprobe.FullName -Destination 'tools/ffprobe.exe' -Force
+          # Preserve upstream license notices beside the independent binaries.
+          $legal = Get-ChildItem -LiteralPath $expanded -Recurse -File | Where-Object {
+            $_.Name -match '^(LICENSE|COPYING|COPYRIGHT|NOTICE)([.-].*)? | Select-Object -First 2
+          if ($LASTEXITCODE -ne 0) { throw "Bundled ffmpeg.exe cannot run" }
+          & 'tools/ffprobe.exe' -version | Select-Object -First 2
+          if ($LASTEXITCODE -ne 0) { throw "Bundled ffprobe.exe cannot run" }
+
+      - name: Install Inno Setup (best effort)
+        continue-on-error: true
+        run: choco install innosetup --no-progress -y
+
+      - name: Run regression tests
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m pytest -s -vv tests/test_pdf_flow.py --junitxml=build/pdf-flow-results.xml
+          $pdfFlowExit = $LASTEXITCODE
+          python -m pytest -s -vv --junitxml=build/test-results.xml
+          if ($pdfFlowExit -ne 0 -or $LASTEXITCODE -ne 0) { throw 'Qt integration or regression validation failed' }
+
+      - name: Read native crash diagnostics
+        if: failure()
+        shell: pwsh
+        run: |
+          Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-10)} -ErrorAction SilentlyContinue |
+            Where-Object { $_.ProviderName -in @('Application Error', 'Windows Error Reporting') } |
+            Select-Object -First 5 TimeCreated, ProviderName, Message | Format-List
+
+      - name: Build portable bundle and installer
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File packaging\build.ps1
+
+      - name: Require installer and matching release tag
+        shell: pwsh
+        run: |
+          $match = [regex]::Match((Get-Content tangerine\paths.py -Raw), 'APP_VERSION\s*=\s*"([^"]+)"')
+          if (-not $match.Success) { throw 'APP_VERSION is missing' }
+          $version = $match.Groups[1].Value
+          if (-not (Test-Path "dist\Tangerine-$version-Setup.exe")) { throw 'Installer was not produced' }
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") {
+            throw 'Release tag does not match APP_VERSION'
+          }
+
+      - name: Smoke test frozen executable
+        shell: pwsh
+        run: |
+          $stdout = Join-Path $env:RUNNER_TEMP "tangerine-version.txt"
+          $process = Start-Process -FilePath "dist\Tangerine\Tangerine.exe" `
+            -ArgumentList "--version" -WindowStyle Hidden -PassThru -Wait -RedirectStandardOutput $stdout
+          if (Test-Path $stdout) { Get-Content $stdout }
+          if ($process.ExitCode -ne 0) {
+            throw "Tangerine.exe --version exited with code $($process.ExitCode)"
+          }
+
+          $process = Start-Process -FilePath "dist\Tangerine\Tangerine.exe" `
+            -ArgumentList "--smoke-webengine" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(30000)) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            throw "Tangerine.exe --smoke-webengine timed out after 30 seconds"
+          }
+          $process.Refresh()
+          if ($process.ExitCode -ne 0) {
+            throw "Tangerine.exe --smoke-webengine exited with code $($process.ExitCode)"
+          }
+
+          $process = Start-Process -FilePath "dist\Tangerine\Tangerine.exe" `
+            -ArgumentList "--smoke-image-pdf" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(30000)) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            throw "Tangerine.exe --smoke-image-pdf timed out"
+          }
+          $process.Refresh()
+          if ($process.ExitCode -ne 0) { throw "Image PDF runtime validation failed" }
+
+          $process = Start-Process -FilePath "dist\Tangerine\Tangerine.exe" `
+            -ArgumentList "--smoke-editors" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(30000)) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            throw "Tangerine.exe --smoke-editors timed out"
+          }
+          $process.Refresh()
+          if ($process.ExitCode -ne 0) { throw "Image editor runtime validation failed" }
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tangerine-windows
+          path: |
+            dist/*-windows-portable.zip
+            dist/*-Setup.exe
+          if-no-files-found: error
+
+      - name: Collect runtime diagnostics
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path build/validation -Force | Out-Null
+          foreach ($name in @('Tangerine-image-pdf-smoke.json', 'Tangerine-webengine-smoke.log', 'Tangerine-editors-smoke.json')) {
+            $source = Join-Path $env:TEMP $name
+            if (Test-Path -LiteralPath $source) {
+              Copy-Item -LiteralPath $source -Destination (Join-Path 'build/validation' $name) -Force
+            }
+          }
+
+      - name: Upload validation receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tangerine-validation
+          path: |
+            build/test-results.xml
+            build/pdf-flow-results.xml
+            build/validation/Tangerine-image-pdf-smoke.json
+            build/validation/Tangerine-webengine-smoke.log
+            build/validation/Tangerine-editors-smoke.json
+          if-no-files-found: warn
+
+      - name: Derive release version
+        id: version
+        shell: pwsh
+        run: |
+          $text = Get-Content tangerine\paths.py -Raw
+          $match = [regex]::Match($text, 'APP_VERSION\s*=\s*"([^"]+)"')
+          if (-not $match.Success) { throw "APP_VERSION not found in tangerine\paths.py" }
+          "version=$($match.Groups[1].Value)" >> $env:GITHUB_OUTPUT
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && github.event_name == 'push')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Tangerine for Windows ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: |
+            dist/*-windows-portable.zip
+            dist/*-Setup.exe
+
+          }
+          if ($legal) {
+            New-Item -ItemType Directory -Path 'tools/licenses' -Force | Out-Null
+            foreach ($file in $legal) {
+              Copy-Item -LiteralPath $file.FullName -Destination (Join-Path 'tools/licenses' $file.Name) -Force
+            }
+          }
           & 'tools/ffmpeg.exe' -version | Select-Object -First 2
           if ($LASTEXITCODE -ne 0) { throw "Bundled ffmpeg.exe cannot run" }
           & 'tools/ffprobe.exe' -version | Select-Object -First 2
