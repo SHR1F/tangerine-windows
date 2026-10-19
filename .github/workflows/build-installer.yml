@@ -6,6 +6,7 @@ on:
       - main
       - feat/windows-finish-pass
       - feat/windows-file-actions
+      - feat/sticky-modifier-wheel
     tags:
       - "v*"
   workflow_dispatch:

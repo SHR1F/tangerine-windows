@@ -35,6 +35,7 @@ from PySide6.QtCore import (
     QPoint,
     QPointF,
     QRectF,
+    QSize,
     Qt,
     QUrl,
     QVariantAnimation,
@@ -46,6 +47,7 @@ from PySide6.QtGui import (
     QFontMetricsF,
     QGuiApplication,
     QImage,
+    QImageReader,
     QPainter,
     QPainterPath,
     QPainterPathStroker,
@@ -83,6 +85,7 @@ CAPSULE_H = 30.0
 CAPSULE_MIN_W = 96.0
 CAPSULE_SLIDE = 40.0
 HUB_VEIL = 0.45             # hub token alpha share: the disc stays frosted
+THUMB_SIDE = 76.0           # centered file preview (when supported)
 
 ICON_SIZE = 27.0
 ICON_LABEL_GAP = 3.0
@@ -198,6 +201,8 @@ class TangerineWheel(QWidget):
 
         self._items: list[FanItem] = []
         self._file_paths: list[str] = []
+        self._thumbnail_path = ""
+        self._thumbnail_image: QImage | None = None
         # Compatibility record of the last drop context (title, subtitle); the
         # hub no longer paints it, `set_prompt` keeps it for older callers.
         self._prompt: tuple[str, str] = ("", "")
@@ -298,11 +303,52 @@ class TangerineWheel(QWidget):
         Real drag-and-drop overwrites this from :meth:`dragEnterEvent`.
         """
         self._file_paths = [str(path) for path in (files or [])]
+        self._sync_thumbnail()
+
+    def _sync_thumbnail(self) -> None:
+        """Decode a small on-disk image once, never during a paint callback.
+
+        QImageReader asks supported plugins for an efficiently scaled decode;
+        unknown/huge images fall back to the normal translucent hub. This
+        keeps repainting a rapidly animated wheel cheap.
+        """
+        path = self._file_paths[0] if self._file_paths else ""
+        if path == self._thumbnail_path:
+            return
+        self._thumbnail_path = path
+        self._thumbnail_image = None
+        if not path or Path(path).suffix.casefold() not in {
+            ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".tif", ".tiff",
+        }:
+            self.update()
+            return
+        try:
+            reader = QImageReader(path)
+            reader.setAutoTransform(True)
+            source_size = reader.size()
+            if not source_size.isValid():
+                return
+            largest = max(source_size.width(), source_size.height())
+            if largest > 192:
+                factor = 192.0 / largest
+                reader.setScaledSize(QSize(
+                    max(1, round(source_size.width() * factor)),
+                    max(1, round(source_size.height() * factor)),
+                ))
+            image = reader.read()
+            if not image.isNull():
+                self._thumbnail_image = image
+        except (OSError, RuntimeError):
+            log.debug("Could not read file thumbnail: %s", path, exc_info=True)
+        finally:
+            self.update()
 
     def reset(self) -> None:
         self._stop_animations()
         self._items = []
         self._file_paths = []
+        self._thumbnail_path = ""
+        self._thumbnail_image = None
         self._hover = -1
         self._hover_values = {}
         self._capsule_t = 0.0
@@ -471,6 +517,7 @@ class TangerineWheel(QWidget):
             return
         files = self._merge_files(files)
         self._file_paths = files
+        self._sync_thumbnail()
         if self._factory is not None:
             self.set_items(self._factory(files))
         if not self._items:
@@ -1017,6 +1064,26 @@ class TangerineWheel(QWidget):
         veil = theme.qcolor(tokens["hub"])
         veil.setAlpha(int(round(veil.alpha() * HUB_VEIL)))
         painter.fillPath(path, veil)
+        if self._thumbnail_image is not None:
+            thumb = self._thumbnail_image
+            side = float(min(thumb.width(), thumb.height()))
+            src = QRectF(
+                (thumb.width() - side) / 2.0,
+                (thumb.height() - side) / 2.0,
+                side,
+                side,
+            )
+            target = QRectF(
+                center.x() - THUMB_SIDE / 2.0,
+                center.y() - THUMB_SIDE / 2.0,
+                THUMB_SIDE,
+                THUMB_SIDE,
+            )
+            corners = QPainterPath()
+            corners.addRoundedRect(target, 11.0, 11.0)
+            painter.setClipPath(corners)
+            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+            painter.drawImage(target, thumb, src)
         painter.restore()
 
     def _paint_capsule(self, painter: QPainter, center: QPointF, tokens: dict) -> None:
