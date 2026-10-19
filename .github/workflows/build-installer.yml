@@ -56,7 +56,15 @@ jobs:
           Copy-Item -LiteralPath $ffprobe.FullName -Destination 'tools/ffprobe.exe' -Force
           # Preserve upstream license notices beside the independent binaries.
           $legal = Get-ChildItem -LiteralPath $expanded -Recurse -File | Where-Object {
-            $_.Name -match '^(LICENSE|COPYING|COPYRIGHT|NOTICE)([.-].*)? | Select-Object -First 2
+            $_.Name -match '^(LICENSE|COPYING|COPYRIGHT|NOTICE)([.-].*)?$'
+          }
+          if ($legal) {
+            New-Item -ItemType Directory -Path 'tools/licenses' -Force | Out-Null
+            foreach ($file in $legal) {
+              Copy-Item -LiteralPath $file.FullName -Destination (Join-Path 'tools/licenses' $file.Name) -Force
+            }
+          }
+          & 'tools/ffmpeg.exe' -version | Select-Object -First 2
           if ($LASTEXITCODE -ne 0) { throw "Bundled ffmpeg.exe cannot run" }
           & 'tools/ffprobe.exe' -version | Select-Object -First 2
           if ($LASTEXITCODE -ne 0) { throw "Bundled ffprobe.exe cannot run" }
