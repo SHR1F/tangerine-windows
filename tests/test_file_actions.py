@@ -32,7 +32,7 @@ def test_copy_path_and_file_urls(qapp, tmp_path):
     file_actions.copy_files([first])
     data = QGuiApplication.clipboard().mimeData()
     assert data.hasUrls()
-    assert [u.toLocalFile() for u in data.urls()] == [str(first.absolute())]
+    assert [Path(u.toLocalFile()) for u in data.urls()] == [first.absolute()]
 
 
 def test_move_never_overwrites_existing_destination(qapp, tmp_path, monkeypatch):
@@ -70,7 +70,7 @@ def test_float_shelf_exposes_real_file_urls(qapp, tmp_path):
         assert shelf.files.count() == 1
         mime = shelf.files.mimeData([shelf.files.item(0)])
         assert mime.hasUrls()
-        assert mime.urls()[0].toLocalFile() == str(photo.absolute())
+        assert Path(mime.urls()[0].toLocalFile()) == photo.absolute()
     finally:
         shelf.close()
         shelf.deleteLater()
