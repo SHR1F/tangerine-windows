@@ -126,7 +126,7 @@ try {
     }
 
     # Media tools are independent subprocess executables, not Python modules.
-    # Ship the pinned Windows LGPL binaries inside the installer and portable ZIP
+    # Ship the pinned Windows GPL binaries inside the installer and portable ZIP
     # so normal audio/video conversions do not depend on PATH or an extra install.
     $BundledToolDir = Join-Path $BundleDir 'tools'
     $ToolsSource = Join-Path $RepoRoot 'tools'
