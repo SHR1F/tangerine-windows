@@ -329,11 +329,11 @@ class DragMonitor(QObject):
             mode = self._mode_for_current_modifiers()
             if mode is None and self._touch_mode:
                 mode = "conversion"
-            if mode is None:
-                self._visible = False
-                self._mode = None
-                self.wheelHidden.emit()
-            elif mode != self._mode:
+            # Match the Mac gesture: the modifier is only needed to invoke
+            # the wheel. Once shown, it stays alive during this same mouse
+            # drag even if the modifier is released. A different modifier may
+            # still switch wheels; letting go of the drag/cancelling hides it.
+            if mode is not None and mode != self._mode:
                 self._mode = mode
                 self.wheelRefreshed.emit(mode)
             return
