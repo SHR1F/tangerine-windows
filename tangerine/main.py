@@ -12,7 +12,7 @@ from PySide6.QtCore import QLockFile, QObject, QThread, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 
-from . import actions, catalog, i18n, paths, render, settings, theme
+from . import actions, catalog, file_actions, i18n, paths, render, settings, theme
 from .monitor import DragMonitor
 from .wheel import FanItem, TangerineWheel
 
@@ -143,6 +143,13 @@ class Controller(QObject):
     def _items_for(self, files, mode):
         file_list = list(files) if files else []
         sources = [Path(f) for f in file_list]
+        if mode == "actions":
+            items = []
+            for key, default_label in file_actions.FILE_ACTIONS:
+                label = i18n.tr(key)
+                items.append(FanItem(key, label, kind="tool"))
+                self._labels[key] = label
+            return items
         if mode == "tools":
             items = []
             for tool in catalog.tools_for(sources):
@@ -217,6 +224,9 @@ class Controller(QObject):
         if not files:
             return
         label = self._labels.get(key)
+        if self._mode == "actions":
+            file_actions.run_file_action(files, key)
+            return
         if self._mode == "tools":
             # Mixed selections may include files a batch tool cannot touch
             # (e.g. photo + PDF): run it only on the matching subset.

@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feat/windows-finish-pass
+      - feat/windows-file-actions
     tags:
       - "v*"
   workflow_dispatch:
@@ -33,6 +34,45 @@ jobs:
             python -m pip install -r requirements-ocr.txt
           }
           python -m pip install pyinstaller pyinstaller-hooks-contrib
+
+      - name: Download pinned GPL FFmpeg and ffprobe
+        shell: pwsh
+        run: |
+          # Pinned BtbN static GPL build (includes libx264). Independent executables only;
+          # keep copyright/source notice bundled with Windows installers.
+          $ErrorActionPreference = "Stop"
+          $url = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-18-13-01/ffmpeg-N-127650-geceaa54a38-win64-gpl.zip'
+          $expected = '86663EF1F04673CC92C9B18CF7F46BCEF69BDAE14C950435CA6A053792C0B60B'
+          $zip = Join-Path $env:RUNNER_TEMP 'ffmpeg-gpl.zip'
+          $expanded = Join-Path $env:RUNNER_TEMP 'ffmpeg-unpacked'
+          Invoke-WebRequest -Uri $url -OutFile $zip
+          $actual = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
+          if ($actual -ne $expected) { throw "FFmpeg archive SHA256 does not match pinned digest" }
+          Expand-Archive -LiteralPath $zip -DestinationPath $expanded -Force
+          $ffmpeg = Get-ChildItem -LiteralPath $expanded -Recurse -File -Filter 'ffmpeg.exe' | Select-Object -First 1
+          $ffprobe = Get-ChildItem -LiteralPath $expanded -Recurse -File -Filter 'ffprobe.exe' | Select-Object -First 1
+          if (-not $ffmpeg -or -not $ffprobe) { throw "The GPL archive did not include ffmpeg.exe and ffprobe.exe" }
+          New-Item -ItemType Directory -Path tools -Force | Out-Null
+          Copy-Item -LiteralPath $ffmpeg.FullName -Destination 'tools/ffmpeg.exe' -Force
+          Copy-Item -LiteralPath $ffprobe.FullName -Destination 'tools/ffprobe.exe' -Force
+          # Preserve upstream license notices beside the independent binaries.
+          $legal = Get-ChildItem -LiteralPath $expanded -Recurse -File | Where-Object {
+            $_.Name -match '^(LICENSE|COPYING|COPYRIGHT|NOTICE)([.-].*)?$'
+          }
+          if ($legal) {
+            New-Item -ItemType Directory -Path 'tools/licenses' -Force | Out-Null
+            foreach ($file in $legal) {
+              Copy-Item -LiteralPath $file.FullName -Destination (Join-Path 'tools/licenses' $file.Name) -Force
+            }
+          }
+          & 'tools/ffmpeg.exe' -version | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "Bundled ffmpeg.exe cannot run" }
+          & 'tools/ffprobe.exe' -version | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "Bundled ffprobe.exe cannot run" }
+          $encoders = & 'tools/ffmpeg.exe' -hide_banner -encoders 2>&1
+          if ($LASTEXITCODE -ne 0 -or -not ($encoders | Select-String -Pattern 'libx264')) {
+            throw "Bundled FFmpeg lacks the required libx264 encoder"
+          }
 
       - name: Install Inno Setup (best effort)
         continue-on-error: true

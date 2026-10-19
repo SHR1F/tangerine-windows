@@ -1376,13 +1376,15 @@ def redact_video(
                 f"[base{index}][blurred{index}]overlay={x}:{y}:enable='{enable}'{label}"
             )
         elif mode == "pixelate":
-            block_w = max(1, w // PIXELATE_BLOCK)
-            block_h = max(1, h // PIXELATE_BLOCK)
+            # The pixelize filter paints a genuine, source-aligned mosaic.
+            # Scaling down then up with "neighbor" can produce inconsistent
+            # block alignment on Windows FFmpeg builds, leaving recognizable
+            # detail in the redacted region. Pixelize avoids this behavior.
             chains.append(
                 f"{current}split=2[base{index}][topix{index}];"
                 f"[topix{index}]crop={w}:{h}:{x}:{y},"
-                f"scale={block_w}:{block_h}:flags=neighbor,"
-                f"scale={w}:{h}:flags=neighbor[mosaic{index}];"
+                f"pixelize=w={PIXELATE_BLOCK}:h={PIXELATE_BLOCK}:mode=avg"
+                f"[mosaic{index}];"
                 f"[base{index}][mosaic{index}]overlay={x}:{y}:enable='{enable}'{label}"
             )
         else:
