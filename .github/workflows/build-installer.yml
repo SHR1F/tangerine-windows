@@ -65,10 +65,14 @@ jobs:
               Copy-Item -LiteralPath $file.FullName -Destination (Join-Path 'tools/licenses' $file.Name) -Force
             }
           }
-          & 'tools/ffmpeg.exe' -version | Select-Object -First 2
+          & 'tools/ffmpeg.exe' -version | Out-Null
           if ($LASTEXITCODE -ne 0) { throw "Bundled ffmpeg.exe cannot run" }
-          & 'tools/ffprobe.exe' -version | Select-Object -First 2
+          & 'tools/ffprobe.exe' -version | Out-Null
           if ($LASTEXITCODE -ne 0) { throw "Bundled ffprobe.exe cannot run" }
+          $encoders = & 'tools/ffmpeg.exe' -hide_banner -encoders 2>&1
+          if ($LASTEXITCODE -ne 0 -or -not ($encoders | Select-String -Pattern 'libx264')) {
+            throw "Bundled FFmpeg lacks the required libx264 encoder"
+          }
 
       - name: Install Inno Setup (best effort)
         continue-on-error: true
