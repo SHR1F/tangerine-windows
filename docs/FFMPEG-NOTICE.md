@@ -8,11 +8,11 @@ Tangerine's Python code.
 - Project: [FFmpeg](https://ffmpeg.org/)
 - Binaries: [BtbN FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds)
 - Pinned bundle: `autobuild-2026-10-18-13-01`,
-  `ffmpeg-N-127650-geceaa54a38-win64-lgpl.zip` (Windows x64, static LGPL variant)
+  `ffmpeg-N-127650-geceaa54a38-win64-gpl.zip` (Windows x64, static GPL variant with libx264)
 - Archive SHA256:
-  `cbbf2389f555a55f5f68969a71020efee0206bbfe6026e6ff23f7ec6d343e670`
-- FFmpeg software license: LGPL (the selected upstream variant explicitly
-  excludes GPL-only dependencies). See
+  `86663ef1f04673cc92c9b18cf7f46bcef69bdae14c950435ca6a053792c0b60b`
+- FFmpeg software license: GPL (selected for its libx264/H.264 encoder;
+  FFmpeg and bundled GPL third-party dependencies remain separately licensed). See
   [FFmpeg's legal notes](https://ffmpeg.org/legal.html) for licensing
   requirements and build configuration.
 - FFmpeg source code: [FFmpeg git](https://git.ffmpeg.org/ffmpeg.git)
