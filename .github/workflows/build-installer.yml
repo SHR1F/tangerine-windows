@@ -35,15 +35,15 @@ jobs:
           }
           python -m pip install pyinstaller pyinstaller-hooks-contrib
 
-      - name: Download pinned LGPL FFmpeg and ffprobe
+      - name: Download pinned GPL FFmpeg and ffprobe
         shell: pwsh
         run: |
-          # Pinned BtbN static LGPL build. Independent executables only;
+          # Pinned BtbN static GPL build (includes libx264). Independent executables only;
           # keep copyright/source notice bundled with Windows installers.
           $ErrorActionPreference = "Stop"
-          $url = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-18-13-01/ffmpeg-N-127650-geceaa54a38-win64-lgpl.zip'
-          $expected = 'CBBF2389F555A55F5F68969A71020EFEE0206BBFE6026E6FF23F7EC6D343E670'
-          $zip = Join-Path $env:RUNNER_TEMP 'ffmpeg-lgpl.zip'
+          $url = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-10-18-13-01/ffmpeg-N-127650-geceaa54a38-win64-gpl.zip'
+          $expected = '86663EF1F04673CC92C9B18CF7F46BCEF69BDAE14C950435CA6A053792C0B60B'
+          $zip = Join-Path $env:RUNNER_TEMP 'ffmpeg-gpl.zip'
           $expanded = Join-Path $env:RUNNER_TEMP 'ffmpeg-unpacked'
           Invoke-WebRequest -Uri $url -OutFile $zip
           $actual = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
@@ -51,7 +51,7 @@ jobs:
           Expand-Archive -LiteralPath $zip -DestinationPath $expanded -Force
           $ffmpeg = Get-ChildItem -LiteralPath $expanded -Recurse -File -Filter 'ffmpeg.exe' | Select-Object -First 1
           $ffprobe = Get-ChildItem -LiteralPath $expanded -Recurse -File -Filter 'ffprobe.exe' | Select-Object -First 1
-          if (-not $ffmpeg -or -not $ffprobe) { throw "The LGPL archive did not include ffmpeg.exe and ffprobe.exe" }
+          if (-not $ffmpeg -or -not $ffprobe) { throw "The GPL archive did not include ffmpeg.exe and ffprobe.exe" }
           New-Item -ItemType Directory -Path tools -Force | Out-Null
           Copy-Item -LiteralPath $ffmpeg.FullName -Destination 'tools/ffmpeg.exe' -Force
           Copy-Item -LiteralPath $ffprobe.FullName -Destination 'tools/ffprobe.exe' -Force
