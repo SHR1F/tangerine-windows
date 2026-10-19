@@ -153,11 +153,14 @@ class DragMonitor(QObject):
         if not held:
             return None
         tools_mask = settings.parse_mask(settings.get("toolsWheelDragModifierMask"))
+        actions_mask = settings.parse_mask(settings.get("actionsWheelDragModifierMask"))
         conversion_mask = settings.parse_mask(
             settings.get("conversionWheelDragModifierMask")
         )
         if tools_mask and tools_mask <= held:
             return "tools"
+        if actions_mask and actions_mask <= held:
+            return "actions"
         if conversion_mask and conversion_mask <= held:
             return "conversion"
         return None
