@@ -65,6 +65,24 @@ wash alone.
   **Light** and **Dark** (stored as `appearanceTheme` in `settings.json`); the
   change applies live to the wheel, the progress cards and the editors.
 
+## Native Windows file actions (1.10.4)
+
+Hold **Ctrl** while dragging a file or folder from Explorer to open the
+file-actions wheel (or **Ctrl+Enter** on an Explorer selection). The wheel
+offers:
+
+- **Copy** selected files/folders to the Windows clipboard for Explorer paste.
+- **Move** to a destination you choose; conflicting names get a safe suffix,
+  and existing data is never overwritten.
+- **Copy Path** as newline-separated absolute paths.
+- **Terminal** opens PowerShell in the selected folder or a file's parent.
+- **Float** opens a compact always-on-top shelf from which you can drag files
+  into other apps. Close the shelf when finished.
+
+The macOS original's AirDrop is Apple-specific; this fork does not falsely
+claim AirDrop support on Windows. Windows Nearby Sharing is an OS feature,
+not yet integrated into the wheel.
+
 ## Features
 
 ### Editing multiple images and saved options
