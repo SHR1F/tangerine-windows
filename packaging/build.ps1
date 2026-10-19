@@ -143,6 +143,10 @@ try {
         if (Test-Path -LiteralPath $Notice) {
             Copy-Item -LiteralPath $Notice -Destination (Join-Path $BundledToolDir 'FFMPEG-NOTICE.md') -Force
         }
+        $Licenses = Join-Path $ToolsSource 'licenses'
+        if (Test-Path -LiteralPath $Licenses -PathType Container) {
+            Copy-Item -LiteralPath $Licenses -Destination (Join-Path $BundledToolDir 'licenses') -Recurse -Force
+        }
         Write-Host '    Bundled FFmpeg/ffprobe for offline media conversion.'
     }
 
