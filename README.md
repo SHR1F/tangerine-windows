@@ -1,5 +1,14 @@
 # Tangerine for Windows
 
+> **SHR1F fork:** Build your own Windows executable via
+> [GitHub Actions](https://github.com/SHR1F/tangerine-windows/actions/workflows/build-installer.yml),
+> download successful versioned builds from
+> [Releases](https://github.com/SHR1F/tangerine-windows/releases), and read
+> the [Windows build & quality checklist](docs/SHR1F-WINDOWS-QUALITY.md).
+> On a new GitHub fork, you may need to enable Actions manually first.
+> This fork is still being validated against the original macOS experience;
+> 1:1 visual/feature parity is not yet certified.
+
 A drag-to-convert desktop tray utility for Windows 11. Hold **Shift** while
 dragging files out of File Explorer and a radial wheel appears under the
 cursor: drop the files onto a petal to convert them. Hold **Alt+Shift**
