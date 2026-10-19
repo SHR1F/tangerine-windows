@@ -374,8 +374,11 @@ class SettingsWindow(QWidget):
             i18n.tr("settings.wheels.conversions"), "conversionWheelDragModifierMask")
         self._tools_checks = ModifierChecks(
             i18n.tr("settings.wheels.tools"), "toolsWheelDragModifierMask")
+        self._actions_checks = ModifierChecks(
+            i18n.tr("settings.wheels.actions"), "actionsWheelDragModifierMask")
         layout.addWidget(self._conversion_checks)
         layout.addWidget(self._tools_checks)
+        layout.addWidget(self._actions_checks)
 
         sticky_group = QGroupBox(i18n.tr("settings.wheels.sticky"))
         sticky_layout = QVBoxLayout(sticky_group)
