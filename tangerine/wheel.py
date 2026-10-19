@@ -248,7 +248,11 @@ class TangerineWheel(QWidget):
     def set_items(self, items: Sequence[FanItem], animate: bool = False) -> None:
         """Replace the petals; *animate* replays the bloom (mode switches)."""
         previous = len(self._items)
+        self._retire_animation("_hover_anim")
+        self._retire_animation("_capsule_anim")
         self._items = list(items)
+        self._scroll_angle = 0
+        self._scroll_pixel = 0
         self._hover = -1
         self._hover_values = {index: 0.0 for index in range(len(self._items))}
         self._capsule_t = 0.0
@@ -373,8 +377,7 @@ class TangerineWheel(QWidget):
         """Abort a farewell in flight so the wheel stays for this gesture."""
         self._depart_token += 1
         self._depart = 0.0
-        if self._depart_anim is not None:
-            self._depart_anim.stop()
+        self._retire_animation("_depart_anim")
         self.update()
 
     def _close(self) -> None:
