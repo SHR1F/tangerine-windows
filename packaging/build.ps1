@@ -125,6 +125,27 @@ try {
         throw "Expected frozen executable not found: $BundleExe"
     }
 
+    # Media tools are independent subprocess executables, not Python modules.
+    # Ship the pinned Windows LGPL binaries inside the installer and portable ZIP
+    # so normal audio/video conversions do not depend on PATH or an extra install.
+    $BundledToolDir = Join-Path $BundleDir 'tools'
+    $ToolsSource = Join-Path $RepoRoot 'tools'
+    $FFmpegExe = Join-Path $ToolsSource 'ffmpeg.exe'
+    $FFprobeExe = Join-Path $ToolsSource 'ffprobe.exe'
+    if (Test-Path -LiteralPath $FFmpegExe -PathType Leaf) {
+        if (-not (Test-Path -LiteralPath $FFprobeExe -PathType Leaf)) {
+            throw 'ffmpeg.exe present but ffprobe.exe is missing from tools folder'
+        }
+        New-Item -ItemType Directory -Force -Path $BundledToolDir | Out-Null
+        Copy-Item -LiteralPath $FFmpegExe -Destination (Join-Path $BundledToolDir 'ffmpeg.exe') -Force
+        Copy-Item -LiteralPath $FFprobeExe -Destination (Join-Path $BundledToolDir 'ffprobe.exe') -Force
+        $Notice = Join-Path $RepoRoot 'docs/FFMPEG-NOTICE.md'
+        if (Test-Path -LiteralPath $Notice) {
+            Copy-Item -LiteralPath $Notice -Destination (Join-Path $BundledToolDir 'FFMPEG-NOTICE.md') -Force
+        }
+        Write-Host '    Bundled FFmpeg/ffprobe for offline media conversion.'
+    }
+
     Write-Host "==> Checking the frozen Qt WebEngine payload"
     $QtWebEngineDir = Join-Path $BundleDir "_internal\PySide6"
     $RequiredWebEngineFiles = @(
