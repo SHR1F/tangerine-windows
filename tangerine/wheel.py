@@ -222,6 +222,8 @@ class TangerineWheel(QWidget):
         self._depart = 0.0
         self._depart_token = 0
         self._keyboard_mode = False
+        self._scroll_angle = 0
+        self._scroll_pixel = 0
 
         self._appear_anim: QVariantAnimation | None = None
         self._hover_anim: QVariantAnimation | None = None
@@ -304,6 +306,8 @@ class TangerineWheel(QWidget):
         self._appear_ms = 0.0
         self._appear_total = 0.0
         self._depart = 0.0
+        self._scroll_angle = 0
+        self._scroll_pixel = 0
         self.update()
 
     def set_keyboard_mode(self, flag: bool) -> None:
@@ -517,19 +521,40 @@ class TangerineWheel(QWidget):
         super().mousePressEvent(event)
 
     def wheelEvent(self, event) -> None:
-        """Scroll over the wheel moves the hover like the arrow keys."""
+        """Accumulate fine mouse/trackpad deltas before switching petals.
+
+        A high-resolution wheel may deliver many fractional angle deltas for
+        one notch; reacting to every event makes the picker spin uncontrollably.
+        Precision touchpads may instead deliver only pixel deltas.
+        """
         count = len(self._items)
-        if count:
-            delta = event.angleDelta().y()
-            if delta:
-                step = 1 if delta < 0 else -1
-                if 0 <= self._hover < count:
-                    self._set_hover_index((self._hover + step) % count)
-                else:
-                    self._set_hover_index(0 if step > 0 else count - 1)
-            event.accept()
+        if not count:
+            super().wheelEvent(event)
             return
-        super().wheelEvent(event)
+
+        angle = event.angleDelta().y()
+        pixel = event.pixelDelta().y()
+        steps = 0
+        if angle:
+            self._scroll_pixel = 0
+            self._scroll_angle += angle
+            steps = math.trunc(self._scroll_angle / 120)
+            self._scroll_angle -= steps * 120
+        elif pixel:
+            self._scroll_angle = 0
+            self._scroll_pixel += pixel
+            steps = math.trunc(self._scroll_pixel / 40)
+            self._scroll_pixel -= steps * 40
+
+        if steps:
+            direction = -1 if steps > 0 else 1
+            if 0 <= self._hover < count:
+                next_index = (self._hover + direction * abs(steps)) % count
+            else:
+                first_index = count - 1 if direction < 0 else 0
+                next_index = (first_index + direction * (abs(steps) - 1)) % count
+            self._set_hover_index(next_index)
+        event.accept()
 
     def keyPressEvent(self, event) -> None:
         key = event.key()
